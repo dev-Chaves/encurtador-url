@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -9,21 +10,25 @@ import (
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-type url struct {
-	hash map[string]string
-}
-
 func generate(n int) string {
-	b := make([]rune, n)
+	b := make([]rune, n) //criando slice com tamanho n
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[rand.Intn(len(letters))] //pra cada indice gera uma letra aleatória do letters
 	}
 	return string(b)
 }
 
+type UrlDTO struct {
+	Url string `json:"url"`
+}
+
 func main() {
 
+	BaseUrl := "localhost:8080/"
+
 	teste := 0
+
+	hash := make(map[string]string)
 
 	mux := http.NewServeMux()
 
@@ -48,9 +53,40 @@ func main() {
 		fmt.Fprintf(w, "POST no Health \n")
 	}
 
+	encurtUrl := func(w http.ResponseWriter, req *http.Request) {
+
+		defer req.Body.Close()
+
+		var url UrlDTO
+
+		decoder := json.NewDecoder(req.Body)
+
+		decoder.DisallowUnknownFields()
+
+		if err := decoder.Decode(&url); err != nil {
+			http.Error(w, "JSON Invalid: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		urlHash := generate(6)
+
+		hash[urlHash] = url.Url
+
+		fmt.Println(url.Url)
+
+		fmt.Println(hash)
+
+		response := BaseUrl + urlHash
+
+		w.Write([]byte(response))
+
+	}
+
 	mux.HandleFunc("GET /health", healthHandler)
 
 	mux.HandleFunc("POST /health", postHealthHandler)
+
+	mux.HandleFunc("POST /encurt", encurtUrl)
 
 	fmt.Println("Server start on 8080")
 
