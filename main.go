@@ -22,71 +22,99 @@ type UrlDTO struct {
 	Url string `json:"url"`
 }
 
+type UrlResponse struct {
+	ShortUrl string `json:"short_url"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func sendResponse(w http.ResponseWriter, data any, status int) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	bytes, err := json.Marshal(data)
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error": "Internal Server Error"}`))
+		return
+	}
+
+	w.WriteHeader(status)
+
+	w.Write(bytes)
+
+}
+
+type Server struct {
+	BaseUrl string
+	Hash    map[string]string
+}
+
+func (s *Server) healthHandler(w http.ResponseWriter, req *http.Request) {
+
+	fmt.Fprintf(w, "Application is health")
+
+}
+
+func (s *Server) encurtUrl(w http.ResponseWriter, req *http.Request) {
+
+	defer req.Body.Close()
+
+	var url UrlDTO
+
+	decoder := json.NewDecoder(req.Body)
+
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&url); err != nil {
+		sendResponse(w, ErrorResponse{Error: "Invalid JSON"}, 400)
+		return
+	}
+
+	urlHash := generate(6)
+
+	s.Hash[urlHash] = url.Url
+
+	response := s.BaseUrl + urlHash
+
+	sendResponse(w, UrlResponse{ShortUrl: response}, 200)
+}
+
+func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
+
+	path := req.PathValue("hash")
+
+	url := s.Hash[path]
+
+	fmt.Println(url)
+
+	if url == "" {
+		response := "URL not found"
+		sendResponse(w, ErrorResponse{Error: response}, 404)
+		return
+	}
+
+	http.Redirect(w, req, url, 301)
+
+}
+
 func main() {
 
-	BaseUrl := "localhost:8080/"
-
-	teste := 0
-
-	hash := make(map[string]string)
+	server := &Server{
+		BaseUrl: "localhost:8080/url/",
+		Hash:    make(map[string]string),
+	}
 
 	mux := http.NewServeMux()
 
-	healthHandler := func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("GET /health", server.healthHandler)
 
-		if req.Method == "POST" {
-			fmt.Println("É um GET em ... ")
-		}
+	mux.HandleFunc("POST /encurt", server.encurtUrl)
 
-		x := generate(10)
-
-		fmt.Fprintf(w, "Application is health %d \n", teste)
-
-		fmt.Fprintf(w, "Valor gerado: %v", x)
-
-		fmt.Fprintf(w, "Rota: %v", req.URL.Path)
-
-		teste++
-	}
-
-	postHealthHandler := func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, "POST no Health \n")
-	}
-
-	encurtUrl := func(w http.ResponseWriter, req *http.Request) {
-
-		defer req.Body.Close()
-
-		var url UrlDTO
-
-		decoder := json.NewDecoder(req.Body)
-
-		decoder.DisallowUnknownFields()
-
-		if err := decoder.Decode(&url); err != nil {
-			http.Error(w, "JSON Invalid: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		urlHash := generate(6)
-
-		hash[urlHash] = url.Url
-
-		fmt.Println(url.Url)
-
-		fmt.Println(hash)
-
-		response := BaseUrl + urlHash
-
-		w.Write([]byte(response))
-
-	}
-
-	mux.HandleFunc("GET /health", healthHandler)
-
-	mux.HandleFunc("POST /health", postHealthHandler)
-
-	mux.HandleFunc("POST /encurt", encurtUrl)
+	mux.HandleFunc("GET /url/{hash}", server.accessShortUrl)
 
 	fmt.Println("Server start on 8080")
 
