@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
+	"sync"
 )
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -46,9 +48,11 @@ func sendResponse(w http.ResponseWriter, data any, status int) {
 
 	w.Write(bytes)
 
+	return
 }
 
 type Server struct {
+	Mu      sync.Mutex
 	BaseUrl string
 	Hash    map[string]string
 }
@@ -74,20 +78,32 @@ func (s *Server) encurtUrl(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if url.Url == "" {
+		sendResponse(w, "URL cannot be null", 400)
+	}
+
 	urlHash := generate(6)
 
+	s.Mu.Lock()
 	s.Hash[urlHash] = url.Url
+	s.Mu.Unlock()
 
-	response := s.BaseUrl + urlHash
+	responseWithURL := s.BaseUrl + urlHash
 
-	sendResponse(w, UrlResponse{ShortUrl: response}, 200)
+	sendResponse(w, UrlResponse{ShortUrl: responseWithURL}, 200)
 }
 
 func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
 
 	path := req.PathValue("hash")
 
+	s.Mu.Lock()
 	url := s.Hash[path]
+	s.Mu.Unlock()
+
+	if !strings.Contains(url, "http") || !strings.Contains(url, "https") {
+		url = "https://" + url
+	}
 
 	fmt.Println(url)
 
@@ -104,7 +120,7 @@ func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
 func main() {
 
 	server := &Server{
-		BaseUrl: "localhost:8080/url/",
+		BaseUrl: "http://localhost:8080/url/",
 		Hash:    make(map[string]string),
 	}
 
