@@ -80,6 +80,7 @@ func (s *Server) encurtUrl(w http.ResponseWriter, req *http.Request) {
 
 	if url.Url == "" {
 		sendResponse(w, "URL cannot be null", 400)
+		return
 	}
 
 	urlHash := generate(6)
@@ -101,17 +102,17 @@ func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
 	url := s.Hash[path]
 	s.Mu.Unlock()
 
-	if !strings.Contains(url, "http") || !strings.Contains(url, "https") {
-		url = "https://" + url
-	}
-
-	fmt.Println(url)
-
 	if url == "" {
 		response := "URL not found"
 		sendResponse(w, ErrorResponse{Error: response}, 404)
 		return
 	}
+
+	if !strings.Contains(url, "http") || !strings.Contains(url, "https") {
+		url = "https://" + url
+	}
+
+	fmt.Println(url)
 
 	http.Redirect(w, req, url, 301)
 
