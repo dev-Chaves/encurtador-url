@@ -108,7 +108,7 @@ func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !strings.Contains(url, "http") && !strings.Contains(url, "https") {
+	if !strings.HasPrefix(url, "http") && !strings.HasPrefix(url, "https") {
 		url = "https://" + url
 	}
 
