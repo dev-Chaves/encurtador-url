@@ -79,7 +79,7 @@ func (s *Server) encurtUrl(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if url.Url == "" {
-		sendResponse(w, "URL cannot be null", 400)
+		sendResponse(w, ErrorResponse{Error: "URL cannot be null"}, 400)
 		return
 	}
 
