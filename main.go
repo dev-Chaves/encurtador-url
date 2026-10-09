@@ -28,6 +28,10 @@ type UrlResponse struct {
 	ShortUrl string `json:"short_url"`
 }
 
+type sucessResponse struct {
+	Message string `json:"message"`
+}
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -59,7 +63,7 @@ type Server struct {
 
 func (s *Server) healthHandler(w http.ResponseWriter, req *http.Request) {
 
-	fmt.Fprintf(w, "Application is health")
+	sendResponse(w, sucessResponse{Message: "Application is Health"}, 200)
 
 }
 
