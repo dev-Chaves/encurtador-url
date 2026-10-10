@@ -80,6 +80,12 @@ func TestEncurtURL(t *testing.T) {
 		t.Fatalf("The response dont have the hash")
 	}
 
-	fmt.Printf("Sucess: %v", hash)
+	valor, ok := server.Hash[hash]
+
+	if ok != true || valor != url.Url {
+		t.Fatalf("The value doesnt exist in the hash")
+	}
+
+	fmt.Printf("Hash: %q || Value: %q", hash, valor)
 
 }
