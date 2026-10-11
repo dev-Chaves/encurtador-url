@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -86,6 +85,38 @@ func TestEncurtURL(t *testing.T) {
 		t.Fatalf("The value doesnt exist in the hash")
 	}
 
-	fmt.Printf("Hash: %q || Value: %q", hash, valor)
+	//fmt.Printf("Hash: %q || Value: %q", hash, valor)
+
+}
+
+func TestRedirectURL(t *testing.T) {
+
+	server := newServer()
+
+	hash := generate(6)
+
+	site := "google.com"
+
+	server.Mu.Lock()
+	server.Hash[hash] = site
+	server.Mu.Unlock()
+
+	url := "/url/" + hash
+
+	req := httptest.NewRequest("GET", url, nil)
+
+	req.SetPathValue("hash", hash)
+
+	rec := httptest.NewRecorder()
+
+	server.accessShortUrl(rec, req)
+
+	if rec.Code != 301 {
+		t.Fatalf("Error in access the short url, code receive: %d", rec.Code)
+	}
+
+	if rec.Header().Get("Location") != "https://google.com" {
+		t.Fatalf("Error in acess url target: %q, receive: %q", "https://"+site, rec.Header().Get("Location"))
+	}
 
 }
