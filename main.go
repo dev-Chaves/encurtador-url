@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -116,13 +119,15 @@ func (s *Server) accessShortUrl(w http.ResponseWriter, req *http.Request) {
 		url = "https://" + url
 	}
 
-	fmt.Println(url)
+	log.Println(url)
 
 	http.Redirect(w, req, url, 301)
 
 }
 
 func main() {
+
+	ctx := context.Background()
 
 	server := &Server{
 		BaseUrl: "http://localhost:8080/url/",
@@ -131,13 +136,29 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	db, err := sql.Open("pgx", "user=postgres password=postgres host=localhost port=5432 dbname=encurtador_url sslmode=disable")
+
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+
+	defer db.Close()
+
+	if err := db.PingContext(ctx); err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+
+	log.Println("Conectado ao banco com sucesso!")
+
 	mux.HandleFunc("GET /health", server.healthHandler)
 
 	mux.HandleFunc("POST /encurt", server.encurtUrl)
 
 	mux.HandleFunc("GET /url/{hash}", server.accessShortUrl)
 
-	fmt.Println("Server start on 8080")
+	log.Println("Server start on 8080")
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
